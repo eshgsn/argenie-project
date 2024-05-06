@@ -38,6 +38,18 @@ class DemoModel(BaseModel):
 
 
 
+@app.get("/movies/")
+async def search_movies(title: str = Query(..., description="Search string for movie titles"),page: int = Query(1, gt=0), per_page: int = Query(10, gt=0)):
+    # Perform a case-insensitive search for movie titles containing the given string
+    skip_count = (page - 1) * per_page
+    query = {"title": {"$regex": title, "$options": "i"}}
+    movies = []
+    async for doc in collection.find(query).skip(skip_count).limit(per_page):
+        movies.append(DemoModel(**doc))
+    return movies
+
+
+
 @app.post("/demo/")
 async def create_demo(demo: DemoModel):
     demo_dict = demo.dict()
@@ -60,7 +72,7 @@ async def read_demo(page: int = Query(1, gt=0), per_page: int = Query(10, gt=0))
 
 
 
-@app.put("/demo/{_id}")
+@app.options("/demo/{_id}")
 async def update_demo(_id: str, demo: DemoModel):
     demo_dict = demo.dict()
     print("value of demo_id is ", _id)

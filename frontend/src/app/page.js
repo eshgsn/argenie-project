@@ -1,5 +1,5 @@
 "use client"
-import React, { useState, useEffect } from "react";
+import React from "react";
 import "./page.css";
 import Link from 'next/link';
 
@@ -26,7 +26,8 @@ class Home extends React.Component {
         Rating: '',
         RottenTomato: ''
       },
-      start: 0
+      start: 0,
+      searchError: ""
     }
   }
 
@@ -57,7 +58,7 @@ class Home extends React.Component {
       const response = await fetch(
         `http://localhost:8000/demo/${_id}`,
         {
-          method: "PUT",
+          method: "OPTIONS",
           headers: {
             "Content-Type": "application/json",
           },
@@ -97,8 +98,19 @@ class Home extends React.Component {
     }
   };
 
-  handleSearchChange = (e) => {
-    this.setState({ searchTerm: e.target.value });
+  handleSearchChange = async (e) => {
+    try {
+    this.setState({ loading: true, searchError: ""});
+    const response = await fetch(`http://localhost:8000/movies/?title=${this.state.searchTerm}`);
+      const jsonData = await response.json();
+      console.log("search data is ", jsonData)
+      if( jsonData && jsonData.length == 0) {
+        this.setState({searchError: "No Data"})
+      }
+      this.setState({ data: jsonData, loading: false });
+    }catch(error) {
+      console.log("something went wrong")
+    } 
   };
 
   handleChange = (e) => {
@@ -115,10 +127,6 @@ class Home extends React.Component {
     this.setState({ isOpen: false });
   };
 
-
-
-
-
   render() {
     const {
       data,
@@ -127,10 +135,13 @@ class Home extends React.Component {
       viewMode,
       isOpen,
       updateData,
+      searchError
     } = this.state;
-    const filteredData = data.filter((item) =>
-      item.title.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+
+
+    // const filteredData = data.filter((item) =>
+    //   item.title.toLowerCase().includes(searchTerm.toLowerCase())
+    // );
 
 
     return loading ? (
@@ -220,17 +231,15 @@ class Home extends React.Component {
           </div>
         )}
         <div className="table-container">
-          <h2>Table Page</h2>
+          <h2 style={{textAlign: 'center', fontSize: 22}}>{viewMode} Page</h2>
           <div className="table-actions">
             <input
               type="text"
               placeholder="Search..."
               value={searchTerm}
-              onChange={this.handleSearchChange}
+              onChange={(e)=> { this.setState({ searchTerm:  e.target.value }) }}
             />
-            {/* <Link to="/add">
-            <button className="add-button">Add</button>
-          </Link> */}
+            <button className="add-button" style={{marginRight: 20}} onClick={this.handleSearchChange}>Search</button>
             <Link href="/addform">
               <button className="add-button">Add</button>
             </Link>
@@ -245,7 +254,6 @@ class Home extends React.Component {
             </button>
           </div>
         </div>
-
         {viewMode === "table" ? (
           <div className="data-table-container">
             <table className="data-table">
@@ -261,7 +269,7 @@ class Home extends React.Component {
                 </tr>
               </thead>
               <tbody>
-                {filteredData.map((item, index) => (
+                {data.map((item, index) => (
                   <tr key={index}>
                     <td>{item.movie}</td>
                     <td>{item.title}</td>
@@ -306,7 +314,7 @@ class Home extends React.Component {
           </div>
         ) : (
           <div className="card-view-container">
-            {filteredData.map((item, index) => (
+            {data.map((item, index) => (
               <div className="card" key={index}>
                 <div className="card-content">
                   <h3>{item.movie}</h3>
@@ -332,8 +340,26 @@ class Home extends React.Component {
                 </div>
               </div>
             ))}
+            <div style={{width: '100%', display: 'flex', justifyContent: 'flex-end', alignItems: 'flex-end', textAlign: 'end'}}>
+              <button onClick={()=> {
+                if(this.state.start > 1) {
+                this.setState({ start: this.state.start - 10 })
+                this.fetchData();
+                }
+              }} style={{backgroundColor: "#ddd", padding: 5}}>{"<"}</button>
+              <label>{this.state.start} - {this.state.start+ 10}</label>
+              <button onClick={()=> {
+                this.setState({ start: this.state.start + 10 })
+                this.fetchData()
+              }} style={{backgroundColor: "#ddd", padding: 5}}>{">"}</button>
+            </div>
           </div>
         )}
+          { searchError != "" && 
+            <div style={{width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center'}}>
+              <h1>{searchError}</h1>
+            </div>
+          }
       </div>
     );
   }
